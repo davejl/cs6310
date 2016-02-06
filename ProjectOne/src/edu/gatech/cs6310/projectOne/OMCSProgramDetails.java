@@ -64,13 +64,9 @@ public class OMCSProgramDetails {
             { false, true, false, false, true, false, false, true, false,
                     false, true, false } }; // 18
 
-    public static boolean[][] getCourseOfferings() {
-        return COURSE_OFFERINGS;
-    }
-
-    public static boolean isCourseOffered(int course, int semester) {
-        if ((course < NUM_COURSES) && (semester < NUM_SEMESTERS)) {
-            return COURSE_OFFERINGS[course][semester];
+    public static boolean isCourseOffered(final int course, final int semester) {
+        if ((course - 1 < NUM_COURSES) && (semester - 1 < NUM_SEMESTERS)) {
+            return COURSE_OFFERINGS[course - 1][semester - 1];
         } else {
             return false;
         }

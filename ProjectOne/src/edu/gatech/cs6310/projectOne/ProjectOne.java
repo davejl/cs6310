@@ -1,5 +1,7 @@
 package edu.gatech.cs6310.projectOne;
 
+import java.security.InvalidParameterException;
+import java.util.Arrays;
 
 public class ProjectOne {
 
@@ -7,12 +9,19 @@ public class ProjectOne {
      * @param args
      */
     public static void main(String[] args) {
-        // TODO Auto-generated method stub
-        Project1Scheduler scheduler = new Project1Scheduler();
-        scheduler.calculateSchedule(args[0]);
 
-        float result = (float) 3.1415;
-        System.out.printf("X=%.2f", result);
+        int filenameIndex = Arrays.asList(args).indexOf("-i") + 1;
+
+        if (filenameIndex == 0 || filenameIndex >= args.length) {
+            throw new InvalidParameterException("Usage: java "
+                    + ProjectOne.class.getName()
+                    + " -i <student demands filename>");
+        }
+
+        String inputFilename = args[filenameIndex];
+
+        Project1Scheduler scheduler = new Project1Scheduler();
+        scheduler.calculateSchedule(inputFilename);
     }
 
 }
