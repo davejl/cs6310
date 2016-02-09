@@ -17,9 +17,31 @@ import java.util.Vector;
 
 public class Project1Scheduler implements Scheduler {
 
+    /**
+     * the number of students requesting courses
+     */
     private int numStudents;
-    private String format;
-    List<StudentDemand> studentDemands;
+
+    /**
+     * the objective value as calculated by the model
+     */
+    private Double objectiveValue = null;
+
+    /**
+     * The details for the OMCS Program.
+     */
+    private final OMCSProgramDetails omcsProgramDetails = new OMCSProgramDetails();
+
+    /**
+     * GRBVars created in the model to represent which courses each student is
+     * taking during which semester.
+     */
+    private GRBVar[][][] studCourseSemBooleanVars;
+
+    /**
+     * the list of student demands
+     */
+    private List<StudentDemand> studentDemands;
 
     @Override
     public void calculateSchedule(String dataFolder) {
@@ -32,27 +54,14 @@ public class Project1Scheduler implements Scheduler {
 
             studentDemands = parseStudentDemandFile(dataFolder);
 
-            GRBVar[][][] studCourseSemBooleanVars = createStudCourseSemVariables(model);
-            GRBVar courseSemClassSizeVar = createCourseSizeLimitVariables(model);
+            studCourseSemBooleanVars = createStudCourseSemVariables(model);
+            GRBVar courseSemClassSizeVar = createCourseSizeLimitVariable(model);
 
-            addFullLoadConstraintsToModel(model, studCourseSemBooleanVars);
-            addStudendNotTakeCourseTwiceToModel(model, studCourseSemBooleanVars);
-            addCourseCapacityConstraintsToModel(courseSemClassSizeVar, model,
-                    studCourseSemBooleanVars);
-            addCoursePrerequisiteConstraintsToModel(model,
-                    studCourseSemBooleanVars);
-            addStudentDemandConstraintsToModel(studentDemands, model,
-                    studCourseSemBooleanVars);
-
+            addConstraints(model, courseSemClassSizeVar);
             setObjective(model, courseSemClassSizeVar);
 
             model.optimize();
-
-            // printStudCourseSemVariables(studCourseSemBooleanVars);
-
-            // Display our results
-            double objectiveValue = model.get(GRB.DoubleAttr.ObjVal);
-            System.out.printf("X=%f", objectiveValue);
+            objectiveValue = model.get(GRB.DoubleAttr.ObjVal);
 
         } catch (IOException ioE) {
             ioE.printStackTrace();
@@ -62,139 +71,238 @@ public class Project1Scheduler implements Scheduler {
 
     }
 
-    private void addStudendNotTakeCourseTwiceToModel(GRBModel model,
-            GRBVar[][][] studCourseSemBooleanVars) throws GRBException {
+    @Override
+    public Vector<String> getCoursesForStudentSemester(String student,
+            String semester) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public double getObjectiveValue() {
+        return objectiveValue;
+    }
+
+    @Override
+    public Vector<String> getStudentsForCourseSemester(String course,
+            String semester) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /**
+     * adds all constraints to our model
+     * 
+     * @param model
+     *            the model to add the constraints to
+     * @param courseSemClassSizeVar
+     *            objective of our model
+     * @throws GRBException
+     *             on any exception from within GRB
+     */
+    private void addConstraints(GRBModel model, GRBVar courseSemClassSizeVar)
+            throws GRBException {
+        addFullLoadConstraintsToModel(model);
+        addStudentOnlyTakeCourseOnceToModel(model);
+        addCourseCapacityConstraintsToModel(courseSemClassSizeVar, model);
+        addCoursePrerequisiteConstraintsToModel(model);
+        addStudentDemandConstraintsToModel(studentDemands, model);
+    }
+
+    /**
+     * adds all course capacity constraints to the model based on when classes
+     * are offered
+     * 
+     * @param classSizeVar
+     *            GRBVar which defines the size of a all classes. This is our
+     *            objective.
+     * @param model
+     *            the model to add the constraints to
+     * @throws GRBException
+     *             on any exception from within GRB
+     */
+    private void addCourseCapacityConstraintsToModel(GRBVar classSizeVar,
+            GRBModel model) throws GRBException {
+
+        // Objective = minimize class size
+        for (int course = 1; course <= omcsProgramDetails.getNumCourses(); ++course) {
+            for (int semester = 1; semester <= omcsProgramDetails
+                    .getNumSemesters(); ++semester) {
+                GRBLinExpr classSize = new GRBLinExpr();
+                for (int student = 1; student <= numStudents; ++student) {
+                    classSize
+                            .addTerm(
+                                    1,
+                                    studCourseSemBooleanVars[student][course][semester]);
+                }
+
+                if (omcsProgramDetails.isCourseOffered(course, semester)) {
+                    String name = String.format("ClassCapacity_Co%d_Se%d",
+                            course, semester);
+                    model.addConstr(classSize, GRB.LESS_EQUAL, classSizeVar,
+                            name);
+                } else {
+                    String name = String.format(
+                            "ClassCapacity_CourseNotOffered_Co%d_Se%d", course,
+                            semester);
+                    model.addConstr(classSize, GRB.LESS_EQUAL, 0, name);
+                }
+
+            }
+        }
+    }
+
+    /**
+     * adds all prerequisite course constraints to the model based on the
+     * omcsProgramDetails.
+     * 
+     * @param model
+     *            the model to add the constraints to
+     * @throws GRBException
+     *             on any exception from within GRB
+     */
+    private void addCoursePrerequisiteConstraintsToModel(GRBModel model)
+            throws GRBException {
+        for (Prerequisite p : omcsProgramDetails.getPrerequisites()) {
+            addCoursePrerequisiteConstraintToModel(p.getPrereq(),
+                    p.getPostreq(), model);
+        }
+    }
+
+    /**
+     * adds a course prerequisite/postrequisite pair to our model
+     * 
+     * @param prereq
+     *            the prerequisite course
+     * @param postreq
+     *            the postrequisite course
+     * @param model
+     *            the model to add the constraints to
+     * @throws GRBException
+     *             on any exception from within GRB
+     */
+    private void addCoursePrerequisiteConstraintToModel(int prereq,
+            int postreq, GRBModel model) throws GRBException {
 
         for (int student = 1; student <= numStudents; ++student) {
-            for (int course = 1; course <= OMCSProgramDetails.getNumCourses(); ++course) {
+            for (int semester = 1; semester <= omcsProgramDetails
+                    .getNumSemesters(); ++semester) {
+                GRBLinExpr coursePrereqLHS = new GRBLinExpr();
+                for (int k = 1; k < semester; ++k) {
+                    coursePrereqLHS.addTerm(1,
+                            studCourseSemBooleanVars[student][prereq][k]);
+                }
+                String name = String.format("Prereq_St%d_Co%d_%d", student,
+                        prereq, postreq);
+                model.addConstr(coursePrereqLHS, GRB.GREATER_EQUAL,
+                        studCourseSemBooleanVars[student][postreq][semester],
+                        name);
+            }
+        }
+
+    }
+
+    /**
+     * add full load constraints to our model. No student can take more than 2
+     * classes at once.
+     * 
+     * @param model
+     *            the model to add the constraints to
+     * @throws GRBException
+     *             on any exception from within GRB
+     */
+    private void addFullLoadConstraintsToModel(GRBModel model)
+            throws GRBException {
+        for (int student = 1; student <= numStudents; ++student) {
+            for (int semester = 1; semester <= omcsProgramDetails
+                    .getNumSemesters(); ++semester) {
+                GRBLinExpr courseLoad = new GRBLinExpr();
+                for (int course = 1; course <= omcsProgramDetails
+                        .getNumCourses(); ++course) {
+                    courseLoad
+                            .addTerm(
+                                    1,
+                                    studCourseSemBooleanVars[student][course][semester]);
+                }
+
+                String name = String.format("FullLoad_St%d_Se%d", student,
+                        semester);
+
+                model.addConstr(courseLoad, GRB.LESS_EQUAL,
+                        omcsProgramDetails.getFullLoad(), name);
+            }
+        }
+    }
+
+    /**
+     * add student requested classes as constraints to the model
+     * 
+     * @param studentDemands
+     * @param model
+     *            the model to add the constraints to
+     * @throws GRBException
+     *             on any exception from within GRB
+     */
+    private void addStudentDemandConstraintsToModel(
+            List<StudentDemand> studentDemands, GRBModel model)
+            throws GRBException {
+        // Students must take each course that they're requesting
+        for (StudentDemand sd : studentDemands) {
+            int student = sd.getStudentID();
+            int course = sd.getCourseID();
+
+            GRBLinExpr studentMustTakeCourse = new GRBLinExpr();
+            for (int semester = 1; semester <= omcsProgramDetails
+                    .getNumSemesters(); ++semester) {
+                studentMustTakeCourse.addTerm(1,
+                        studCourseSemBooleanVars[student][course][semester]);
+            }
+
+            String name = String.format("St%d_must_take_Co%d", student, course);
+            model.addConstr(studentMustTakeCourse, GRB.EQUAL, 1, name);
+        }
+    }
+
+    /**
+     * adds constraints to the model which allows a class to be only taken once.
+     * 
+     * @param model
+     *            the model to add the constraints to
+     * @throws GRBException
+     *             on any exception from within GRB
+     */
+    private void addStudentOnlyTakeCourseOnceToModel(GRBModel model)
+            throws GRBException {
+
+        for (int student = 1; student <= numStudents; ++student) {
+            for (int course = 1; course <= omcsProgramDetails.getNumCourses(); ++course) {
                 GRBLinExpr le = new GRBLinExpr();
 
-                for (int semester = 1; semester <= OMCSProgramDetails
+                for (int semester = 1; semester <= omcsProgramDetails
                         .getNumSemesters(); ++semester) {
                     le.addTerm(1,
                             studCourseSemBooleanVars[student][course][semester]);
 
                 }
-                String name = String.format(format, student, course, 0);
+                String name = String.format("St%d_take_Co%d_only_once",
+                        student, course);
 
                 model.addConstr(le, GRB.LESS_EQUAL, 1, name);
             }
         }
     }
 
-    private void setObjective(GRBModel model, GRBVar courseSemClassSizeVar)
+    /**
+     * creates the objective and returns it as a GRB Variable
+     * 
+     * @param model
+     *            the model to add the constraints to
+     * @return the GRBVar which defines the size of the largest course
+     * @throws GRBException
+     *             on any exception from within GRB
+     */
+    private GRBVar createCourseSizeLimitVariable(GRBModel model)
             throws GRBException {
-        GRBLinExpr objective = new GRBLinExpr();
-        objective.addTerm(1, courseSemClassSizeVar);
-
-        model.setObjective(objective, GRB.MINIMIZE);
-    }
-
-    private void addCourseCapacityConstraintsToModel(GRBVar classSizeVar,
-            GRBModel model, GRBVar[][][] yStudCourseSem) throws GRBException {
-
-        // Objective = minimize class size
-        for (int course = 1; course <= OMCSProgramDetails.getNumCourses(); ++course) {
-            for (int semester = 1; semester <= OMCSProgramDetails
-                    .getNumSemesters(); ++semester) {
-                GRBLinExpr classSize = new GRBLinExpr();
-                for (int student = 1; student <= numStudents; ++student) {
-                    classSize.addTerm(1,
-                            yStudCourseSem[student][course][semester]);
-                }
-                if (OMCSProgramDetails.isCourseOffered(course, semester)) {
-                    model.addConstr(classSize, GRB.LESS_EQUAL, classSizeVar,
-                            "Class_Size_C" + course + "_Se" + semester);
-                } else {
-                    model.addConstr(classSize, GRB.LESS_EQUAL, 0,
-                            "Class_Size_C" + course + "_Se" + semester);
-                }
-
-            }
-        }
-    }
-
-    private void addFullLoadConstraintsToModel(GRBModel model,
-            GRBVar[][][] yStudCourseSem) throws GRBException {
-        for (int student = 1; student <= numStudents; ++student) {
-            for (int semester = 1; semester <= OMCSProgramDetails
-                    .getNumSemesters(); ++semester) {
-                GRBLinExpr courseLoad = new GRBLinExpr();
-                for (int course = 1; course <= OMCSProgramDetails
-                        .getNumCourses(); ++course) {
-                    courseLoad.addTerm(1,
-                            yStudCourseSem[student][course][semester]);
-                }
-                model.addConstr(courseLoad, GRB.LESS_EQUAL,
-                        OMCSProgramDetails.getFullLoad(), "CourseLoad_St"
-                                + student + "_Se" + semester);
-            }
-        }
-    }
-
-    private void addCoursePrerequisiteConstraintsToModel(GRBModel model,
-            GRBVar[][][] yStudCourseSem) throws GRBException {
-        addCoursePrerequisiteConstraintToModel(4, 16, model, yStudCourseSem);
-        addCoursePrerequisiteConstraintToModel(12, 1, model, yStudCourseSem);
-        addCoursePrerequisiteConstraintToModel(9, 13, model, yStudCourseSem);
-        addCoursePrerequisiteConstraintToModel(3, 7, model, yStudCourseSem);
-    }
-
-    private void addCoursePrerequisiteConstraintToModel(int prereq,
-            int postreq, GRBModel model, GRBVar[][][] yStudCourseSem)
-            throws GRBException {
-
-        for (int student = 1; student <= numStudents; ++student) {
-            for (int semester = 1; semester <= OMCSProgramDetails
-                    .getNumSemesters(); ++semester) {
-                GRBLinExpr coursePrereqLHS = new GRBLinExpr();
-                for (int k = 1; k < semester; ++k) {
-                    coursePrereqLHS.addTerm(2,
-                            yStudCourseSem[student][prereq][k]);
-                }
-                String name = "Prereq_St" + student + "_C" + prereq + "_"
-                        + postreq;
-                model.addConstr(coursePrereqLHS, GRB.GREATER_EQUAL,
-                        yStudCourseSem[student][postreq][semester], name);
-            }
-        }
-
-        for (int student = 1; student <= numStudents; ++student) {
-            for (StudentDemand sd : studentDemands) {
-                if ((sd.getStudentID() == student)
-                        && (sd.getCourseID() == postreq)) {
-                    GRBLinExpr coursePrereqLHS = new GRBLinExpr();
-                    GRBLinExpr coursePrereqRHS = new GRBLinExpr();
-
-                    for (int semester = 1; semester <= OMCSProgramDetails
-                            .getNumSemesters(); ++semester) {
-                        coursePrereqLHS.addTerm(2 * semester,
-                                yStudCourseSem[student][prereq][semester]);
-                        coursePrereqRHS.addTerm(semester,
-                                yStudCourseSem[student][postreq][semester]);
-
-                    }
-                    String name = "Prereq_St" + student + "_C" + prereq + "_"
-                            + postreq;
-                    model.addConstr(coursePrereqLHS, GRB.LESS_EQUAL,
-                            coursePrereqRHS, name);
-                    System.out.println("Added constr: " + name);
-                }
-            }
-        }
-
-    }
-
-    private GRBVar createCourseSizeLimitVariables(GRBModel model)
-            throws GRBException {
-        /*
-         * GRBVar[][] yCourseSem = new GRBVar[numCourses][numSemesters];
-         * 
-         * for (int course = 0; course < numCourses; ++course) { for (int
-         * semester = 0; semester < numSemesters; ++semester) {
-         * yCourseSem[course][semester] = model.addVar(0, numStudents, 0.0,
-         * GRB.INTEGER, "C" + course + "_Se" + semester + "_ClassSize"); } }
-         */
 
         GRBVar ret = model
                 .addVar(0, numStudents, 0.0, GRB.INTEGER, "ClassSize");
@@ -203,6 +311,56 @@ public class Project1Scheduler implements Scheduler {
         return ret;
     }
 
+    /**
+     * creates the GRBVars which are then used to build all constraints.
+     * 
+     * @param model
+     *            the model to add the constraints to
+     * @return a GRBVar three-d array which corresponds to each student, course,
+     *         semester combination
+     * @throws GRBException
+     *             on any exception from within GRB
+     */
+    private GRBVar[][][] createStudCourseSemVariables(GRBModel model)
+            throws GRBException {
+        GRBVar[][][] yStudCourseSem = new GRBVar[numStudents + 1][omcsProgramDetails
+                .getNumCourses() + 1][omcsProgramDetails.getNumSemesters() + 1];
+
+        String format = "St%0" + String.valueOf(numStudents).length()
+                + "d_Co%0"
+                + String.valueOf(omcsProgramDetails.getNumCourses()).length()
+                + "d_Se%0"
+                + String.valueOf(omcsProgramDetails.getNumSemesters()).length()
+                + "d";
+
+        for (int student = 1; student <= numStudents; ++student) {
+            for (int course = 1; course <= omcsProgramDetails.getNumCourses(); ++course) {
+                for (int semester = 1; semester <= omcsProgramDetails
+                        .getNumSemesters(); ++semester) {
+
+                    yStudCourseSem[student][course][semester] = model.addVar(0,
+                            1, 0.0, GRB.BINARY,
+                            String.format(format, student, course, semester));
+
+                }
+            }
+        }
+        model.update();
+        return yStudCourseSem;
+    }
+
+    /**
+     * parses the input file for the list of students and the courses they are
+     * requesting to take
+     * 
+     * @param dataFolder
+     *            the input file which contains the students' requested courses
+     * @return a list of StudentDemands
+     * @throws FileNotFoundException
+     *             on failure to open the file
+     * @throws IOException
+     *             on failure to read the file
+     */
     private List<StudentDemand> parseStudentDemandFile(String dataFolder)
             throws FileNotFoundException, IOException {
         final String csvSplitBy = ",";
@@ -228,98 +386,29 @@ public class Project1Scheduler implements Scheduler {
                 studentDemands.add(new StudentDemand(numbers[0], numbers[1],
                         numbers[2]));
             } catch (NumberFormatException nfE) {
-
+                // a line in the file is malformed. ignore it
             }
         }
         bufferedReader.close();
         return studentDemands;
     }
 
-    private GRBVar[][][] createStudCourseSemVariables(GRBModel model)
+    /**
+     * sets the objective of the model, to minimize the size of the classes
+     * 
+     * @param model
+     *            the model to add the constraints to
+     * @param courseSemClassSizeVar
+     *            the class size GRBVar
+     * @throws GRBException
+     *             on any exception from within GRB
+     */
+    private void setObjective(GRBModel model, GRBVar courseSemClassSizeVar)
             throws GRBException {
-        GRBVar[][][] yStudCourseSem = new GRBVar[numStudents + 1][OMCSProgramDetails
-                .getNumCourses() + 1][OMCSProgramDetails.getNumSemesters() + 1];
+        GRBLinExpr objective = new GRBLinExpr();
+        objective.addTerm(1, courseSemClassSizeVar);
 
-        format = "St%0" + String.valueOf(numStudents).length() + "d_Co%0"
-                + String.valueOf(OMCSProgramDetails.getNumCourses()).length()
-                + "d_Se%0"
-                + String.valueOf(OMCSProgramDetails.getNumSemesters()).length()
-                + "d";
-
-        for (int student = 1; student <= numStudents; ++student) {
-            for (int course = 1; course <= OMCSProgramDetails.getNumCourses(); ++course) {
-                for (int semester = 1; semester <= OMCSProgramDetails
-                        .getNumSemesters(); ++semester) {
-
-                    yStudCourseSem[student][course][semester] = model.addVar(0,
-                            1, 0.0, GRB.BINARY,
-                            String.format(format, student, course, semester));
-
-                }
-            }
-        }
-        model.update();
-        return yStudCourseSem;
-    }
-
-    private void printStudCourseSemVariables(GRBVar[][][] yStudCourseSem)
-            throws GRBException {
-
-        for (int student = 1; student <= 1; ++student) {
-            for (int semester = 1; semester <= OMCSProgramDetails
-                    .getNumSemesters(); ++semester) {
-                for (int course = 1; course <= OMCSProgramDetails
-                        .getNumCourses(); ++course) {
-                    if (yStudCourseSem[student][course][semester]
-                            .get(GRB.DoubleAttr.X) > .5) {
-
-                        System.out
-                                .println(yStudCourseSem[student][course][semester]
-                                        .get(GRB.StringAttr.VarName));
-                    }
-                }
-            }
-        }
-    }
-
-    private void addStudentDemandConstraintsToModel(
-            List<StudentDemand> studentDemands, GRBModel model,
-            GRBVar[][][] yStudCourseSem) throws GRBException {
-        // Students must take each course that they're requesting
-        for (StudentDemand sd : studentDemands) {
-            int student = sd.getStudentID();
-            int course = sd.getCourseID();
-
-            GRBLinExpr studentMustTakeCourse = new GRBLinExpr();
-            for (int semester = 1; semester <= OMCSProgramDetails
-                    .getNumSemesters(); ++semester) {
-                studentMustTakeCourse.addTerm(1,
-                        yStudCourseSem[student][course][semester]);
-            }
-
-            String name = "St" + student + "_must_take_C" + course;
-            model.addConstr(studentMustTakeCourse, GRB.EQUAL, 1, name);
-        }
-    }
-
-    @Override
-    public double getObjectiveValue() {
-        // TODO Auto-generated method stub
-        return 0;
-    }
-
-    @Override
-    public Vector<String> getCoursesForStudentSemester(String student,
-            String semester) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public Vector<String> getStudentsForCourseSemester(String course,
-            String semester) {
-        // TODO Auto-generated method stub
-        return null;
+        model.setObjective(objective, GRB.MINIMIZE);
     }
 
 }

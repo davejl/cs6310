@@ -6,7 +6,10 @@ import java.util.Arrays;
 public class ProjectOne {
 
     /**
+     * main function
+     * 
      * @param args
+     *            arguments to main function
      */
     public static void main(String[] args) {
 
@@ -22,6 +25,8 @@ public class ProjectOne {
 
         Project1Scheduler scheduler = new Project1Scheduler();
         scheduler.calculateSchedule(inputFilename);
+        System.out.printf("X=%d", Math.round(scheduler.getObjectiveValue()));
+
     }
 
 }

@@ -2,26 +2,64 @@ package edu.gatech.cs6310.projectOne;
 
 public class StudentDemand {
 
-	private final int studentID;
-	private final int courseID;
-	private final int semesterID;
+    /**
+     * the course ID of the course that the student is requesting
+     */
+    private final int courseID;
 
-	public StudentDemand(int studentID, int courseID, int semesterID) {
-		this.studentID = studentID;
-		this.courseID = courseID;
-		this.semesterID = semesterID;
-	}
+    /**
+     * the semester ID of the semester the student is requesting to take the
+     * course
+     */
+    private final int semesterID;
 
-	public int getStudentID() {
-		return studentID;
-	}
+    /**
+     * the student ID of the student requesting the class
+     */
+    private final int studentID;
 
-	public int getCourseID() {
-		return courseID;
-	}
+    /**
+     * constructor for the StudentDemand.
+     * 
+     * @param studentID
+     *            the student ID of the student requesting the class
+     * @param courseID
+     *            the course ID of the course that the student is requesting
+     * @param semesterID
+     *            the semester ID of the semester the student is requesting to
+     *            take the course
+     */
+    public StudentDemand(int studentID, int courseID, int semesterID) {
+        this.studentID = studentID;
+        this.courseID = courseID;
+        this.semesterID = semesterID;
+    }
 
-	public int getSemesterID() {
-		return semesterID;
-	}
+    /**
+     * accessor for courseID
+     * 
+     * @return the course ID for this Student Demand
+     */
+    public int getCourseID() {
+        return courseID;
+    }
+
+    /**
+     * accessor for semesterID
+     * 
+     * @return the semester ID for this Student Demand
+     */
+    public int getSemesterID() {
+        return semesterID;
+    }
+
+    /**
+     * accessor for studentID
+     * 
+     * @return the student ID for this Student Demand
+     */
+    public int getStudentID() {
+        return studentID;
+    }
 
 }
