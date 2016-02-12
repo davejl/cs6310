@@ -15,6 +15,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
+/**
+ * Scheduler for Project One. Uses Gurobi to assign students to classes within
+ * semesters based on the OMCS Program and students' requests
+ * 
+ * @author David Loibl
+ * 
+ */
 public class Project1Scheduler implements Scheduler {
 
     /**
@@ -46,6 +53,7 @@ public class Project1Scheduler implements Scheduler {
     @Override
     public void calculateSchedule(String dataFolder) {
         GRBEnv env;
+
         try {
             env = new GRBEnv("grb.log");
             env.set(GRB.IntParam.LogToConsole, 0);
@@ -73,8 +81,7 @@ public class Project1Scheduler implements Scheduler {
 
     @Override
     public Vector<String> getCoursesForStudentSemester(String student,
-            String semester) {
-        // TODO Auto-generated method stub
+                    String semester) {
         return null;
     }
 
@@ -85,8 +92,7 @@ public class Project1Scheduler implements Scheduler {
 
     @Override
     public Vector<String> getStudentsForCourseSemester(String course,
-            String semester) {
-        // TODO Auto-generated method stub
+                    String semester) {
         return null;
     }
 
@@ -101,7 +107,7 @@ public class Project1Scheduler implements Scheduler {
      *             on any exception from within GRB
      */
     private void addConstraints(GRBModel model, GRBVar courseSemClassSizeVar)
-            throws GRBException {
+                    throws GRBException {
         addFullLoadConstraintsToModel(model);
         addStudentOnlyTakeCourseOnceToModel(model);
         addCourseCapacityConstraintsToModel(courseSemClassSizeVar, model);
@@ -122,29 +128,28 @@ public class Project1Scheduler implements Scheduler {
      *             on any exception from within GRB
      */
     private void addCourseCapacityConstraintsToModel(GRBVar classSizeVar,
-            GRBModel model) throws GRBException {
+                    GRBModel model) throws GRBException {
 
         // Objective = minimize class size
         for (int course = 1; course <= omcsProgramDetails.getNumCourses(); ++course) {
             for (int semester = 1; semester <= omcsProgramDetails
-                    .getNumSemesters(); ++semester) {
+                            .getNumSemesters(); ++semester) {
                 GRBLinExpr classSize = new GRBLinExpr();
                 for (int student = 1; student <= numStudents; ++student) {
-                    classSize
-                            .addTerm(
+                    classSize.addTerm(
                                     1,
                                     studCourseSemBooleanVars[student][course][semester]);
                 }
 
                 if (omcsProgramDetails.isCourseOffered(course, semester)) {
                     String name = String.format("ClassCapacity_Co%d_Se%d",
-                            course, semester);
+                                    course, semester);
                     model.addConstr(classSize, GRB.LESS_EQUAL, classSizeVar,
-                            name);
+                                    name);
                 } else {
                     String name = String.format(
-                            "ClassCapacity_CourseNotOffered_Co%d_Se%d", course,
-                            semester);
+                                    "ClassCapacity_CourseNotOffered_Co%d_Se%d",
+                                    course, semester);
                     model.addConstr(classSize, GRB.LESS_EQUAL, 0, name);
                 }
 
@@ -162,10 +167,10 @@ public class Project1Scheduler implements Scheduler {
      *             on any exception from within GRB
      */
     private void addCoursePrerequisiteConstraintsToModel(GRBModel model)
-            throws GRBException {
+                    throws GRBException {
         for (Prerequisite p : omcsProgramDetails.getPrerequisites()) {
             addCoursePrerequisiteConstraintToModel(p.getPrereq(),
-                    p.getPostreq(), model);
+                            p.getPostreq(), model);
         }
     }
 
@@ -182,21 +187,23 @@ public class Project1Scheduler implements Scheduler {
      *             on any exception from within GRB
      */
     private void addCoursePrerequisiteConstraintToModel(int prereq,
-            int postreq, GRBModel model) throws GRBException {
+                    int postreq, GRBModel model) throws GRBException {
 
         for (int student = 1; student <= numStudents; ++student) {
             for (int semester = 1; semester <= omcsProgramDetails
-                    .getNumSemesters(); ++semester) {
+                            .getNumSemesters(); ++semester) {
                 GRBLinExpr coursePrereqLHS = new GRBLinExpr();
                 for (int k = 1; k < semester; ++k) {
-                    coursePrereqLHS.addTerm(1,
-                            studCourseSemBooleanVars[student][prereq][k]);
+                    coursePrereqLHS.addTerm(
+                                    1,
+                                    studCourseSemBooleanVars[student][prereq][k]);
                 }
                 String name = String.format("Prereq_St%d_Co%d_%d", student,
-                        prereq, postreq);
-                model.addConstr(coursePrereqLHS, GRB.GREATER_EQUAL,
-                        studCourseSemBooleanVars[student][postreq][semester],
-                        name);
+                                prereq, postreq);
+                model.addConstr(coursePrereqLHS,
+                                GRB.GREATER_EQUAL,
+                                studCourseSemBooleanVars[student][postreq][semester],
+                                name);
             }
         }
 
@@ -212,24 +219,23 @@ public class Project1Scheduler implements Scheduler {
      *             on any exception from within GRB
      */
     private void addFullLoadConstraintsToModel(GRBModel model)
-            throws GRBException {
+                    throws GRBException {
         for (int student = 1; student <= numStudents; ++student) {
             for (int semester = 1; semester <= omcsProgramDetails
-                    .getNumSemesters(); ++semester) {
+                            .getNumSemesters(); ++semester) {
                 GRBLinExpr courseLoad = new GRBLinExpr();
                 for (int course = 1; course <= omcsProgramDetails
-                        .getNumCourses(); ++course) {
-                    courseLoad
-                            .addTerm(
+                                .getNumCourses(); ++course) {
+                    courseLoad.addTerm(
                                     1,
                                     studCourseSemBooleanVars[student][course][semester]);
                 }
 
                 String name = String.format("FullLoad_St%d_Se%d", student,
-                        semester);
+                                semester);
 
                 model.addConstr(courseLoad, GRB.LESS_EQUAL,
-                        omcsProgramDetails.getFullLoad(), name);
+                                omcsProgramDetails.getFullLoad(), name);
             }
         }
     }
@@ -244,8 +250,8 @@ public class Project1Scheduler implements Scheduler {
      *             on any exception from within GRB
      */
     private void addStudentDemandConstraintsToModel(
-            List<StudentDemand> studentDemands, GRBModel model)
-            throws GRBException {
+                    List<StudentDemand> studentDemands, GRBModel model)
+                    throws GRBException {
         // Students must take each course that they're requesting
         for (StudentDemand sd : studentDemands) {
             int student = sd.getStudentID();
@@ -253,9 +259,10 @@ public class Project1Scheduler implements Scheduler {
 
             GRBLinExpr studentMustTakeCourse = new GRBLinExpr();
             for (int semester = 1; semester <= omcsProgramDetails
-                    .getNumSemesters(); ++semester) {
-                studentMustTakeCourse.addTerm(1,
-                        studCourseSemBooleanVars[student][course][semester]);
+                            .getNumSemesters(); ++semester) {
+                studentMustTakeCourse
+                                .addTerm(1,
+                                                studCourseSemBooleanVars[student][course][semester]);
             }
 
             String name = String.format("St%d_must_take_Co%d", student, course);
@@ -272,20 +279,20 @@ public class Project1Scheduler implements Scheduler {
      *             on any exception from within GRB
      */
     private void addStudentOnlyTakeCourseOnceToModel(GRBModel model)
-            throws GRBException {
+                    throws GRBException {
 
         for (int student = 1; student <= numStudents; ++student) {
             for (int course = 1; course <= omcsProgramDetails.getNumCourses(); ++course) {
                 GRBLinExpr le = new GRBLinExpr();
 
                 for (int semester = 1; semester <= omcsProgramDetails
-                        .getNumSemesters(); ++semester) {
+                                .getNumSemesters(); ++semester) {
                     le.addTerm(1,
-                            studCourseSemBooleanVars[student][course][semester]);
+                                    studCourseSemBooleanVars[student][course][semester]);
 
                 }
                 String name = String.format("St%d_take_Co%d_only_once",
-                        student, course);
+                                student, course);
 
                 model.addConstr(le, GRB.LESS_EQUAL, 1, name);
             }
@@ -302,10 +309,10 @@ public class Project1Scheduler implements Scheduler {
      *             on any exception from within GRB
      */
     private GRBVar createCourseSizeLimitVariable(GRBModel model)
-            throws GRBException {
+                    throws GRBException {
 
         GRBVar ret = model
-                .addVar(0, numStudents, 0.0, GRB.INTEGER, "ClassSize");
+                        .addVar(0, numStudents, 0.0, GRB.INTEGER, "ClassSize");
 
         model.update();
         return ret;
@@ -322,25 +329,28 @@ public class Project1Scheduler implements Scheduler {
      *             on any exception from within GRB
      */
     private GRBVar[][][] createStudCourseSemVariables(GRBModel model)
-            throws GRBException {
+                    throws GRBException {
         GRBVar[][][] yStudCourseSem = new GRBVar[numStudents + 1][omcsProgramDetails
-                .getNumCourses() + 1][omcsProgramDetails.getNumSemesters() + 1];
+                        .getNumCourses() + 1][omcsProgramDetails
+                        .getNumSemesters() + 1];
 
-        String format = "St%0" + String.valueOf(numStudents).length()
-                + "d_Co%0"
-                + String.valueOf(omcsProgramDetails.getNumCourses()).length()
-                + "d_Se%0"
-                + String.valueOf(omcsProgramDetails.getNumSemesters()).length()
-                + "d";
+        String format = "St%0"
+                        + String.valueOf(numStudents).length()
+                        + "d_Co%0"
+                        + String.valueOf(omcsProgramDetails.getNumCourses())
+                                        .length()
+                        + "d_Se%0"
+                        + String.valueOf(omcsProgramDetails.getNumSemesters())
+                                        .length() + "d";
 
         for (int student = 1; student <= numStudents; ++student) {
             for (int course = 1; course <= omcsProgramDetails.getNumCourses(); ++course) {
                 for (int semester = 1; semester <= omcsProgramDetails
-                        .getNumSemesters(); ++semester) {
+                                .getNumSemesters(); ++semester) {
 
                     yStudCourseSem[student][course][semester] = model.addVar(0,
-                            1, 0.0, GRB.BINARY,
-                            String.format(format, student, course, semester));
+                                    1, 0.0, GRB.BINARY, String.format(format,
+                                                    student, course, semester));
 
                 }
             }
@@ -362,13 +372,13 @@ public class Project1Scheduler implements Scheduler {
      *             on failure to read the file
      */
     private List<StudentDemand> parseStudentDemandFile(String dataFolder)
-            throws FileNotFoundException, IOException {
+                    throws FileNotFoundException, IOException {
         final String csvSplitBy = ",";
 
         List<StudentDemand> studentDemands = new ArrayList<StudentDemand>();
 
         BufferedReader bufferedReader = new BufferedReader(new FileReader(
-                dataFolder));
+                        dataFolder));
         String line;
         while ((line = bufferedReader.readLine()) != null) {
             try {
@@ -384,7 +394,7 @@ public class Project1Scheduler implements Scheduler {
                 }
 
                 studentDemands.add(new StudentDemand(numbers[0], numbers[1],
-                        numbers[2]));
+                                numbers[2]));
             } catch (NumberFormatException nfE) {
                 // a line in the file is malformed. ignore it
             }
@@ -404,7 +414,7 @@ public class Project1Scheduler implements Scheduler {
      *             on any exception from within GRB
      */
     private void setObjective(GRBModel model, GRBVar courseSemClassSizeVar)
-            throws GRBException {
+                    throws GRBException {
         GRBLinExpr objective = new GRBLinExpr();
         objective.addTerm(1, courseSemClassSizeVar);
 

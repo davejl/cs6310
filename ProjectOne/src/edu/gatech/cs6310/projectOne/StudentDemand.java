@@ -1,5 +1,11 @@
 package edu.gatech.cs6310.projectOne;
 
+/**
+ * Defines a student's request to take a class during a specific semester
+ * 
+ * @author David Loibl
+ * 
+ */
 public class StudentDemand {
 
     /**

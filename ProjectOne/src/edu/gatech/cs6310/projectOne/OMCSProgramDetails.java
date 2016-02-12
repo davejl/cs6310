@@ -1,5 +1,11 @@
 package edu.gatech.cs6310.projectOne;
 
+/**
+ * Details of the OMCS Program of study
+ * 
+ * @author David Loibl
+ * 
+ */
 public class OMCSProgramDetails {
 
     /**
@@ -8,42 +14,42 @@ public class OMCSProgramDetails {
      * the course is not offered
      */
     private final boolean[][] courseOfferings = {
-            { true, false, false, true, false, false, true, false, false, true,
-                    false, false }, // 1
-            { true, true, true, true, true, true, true, true, true, true, true,
-                    true }, // 2
-            { true, true, true, true, true, true, true, true, true, true, true,
-                    true }, // 3
-            { true, true, true, true, true, true, true, true, true, true, true,
-                    true }, // 4
-            { false, true, false, false, true, false, false, true, false,
-                    false, true, false }, // 5
-            { true, true, true, true, true, true, true, true, true, true, true,
-                    true }, // 6
-            { true, false, false, true, false, false, true, false, false, true,
-                    false, false }, // 7
-            { true, true, true, true, true, true, true, true, true, true, true,
-                    true }, // 8
-            { true, true, true, true, true, true, true, true, true, true, true,
-                    true }, // 9
-            { false, true, false, false, true, false, false, true, false,
-                    false, true, false }, // 10
-            { true, false, false, true, false, false, true, false, false, true,
-                    false, false }, // 11
-            { true, true, true, true, true, true, true, true, true, true, true,
-                    true }, // 12
-            { true, true, true, true, true, true, true, true, true, true, true,
-                    true }, // 13
-            { false, true, false, false, true, false, false, true, false,
-                    false, true, false }, // 14
-            { true, false, false, true, false, false, true, false, false, true,
-                    false, false }, // 15
-            { false, true, false, false, true, false, false, true, false,
-                    false, true, false }, // 16
-            { true, false, false, true, false, false, true, false, false, true,
-                    false, false }, // 17
-            { false, true, false, false, true, false, false, true, false,
-                    false, true, false } }; // 18
+                    { true, false, false, true, false, false, true, false,
+                                    false, true, false, false }, // 1
+                    { true, true, true, true, true, true, true, true, true,
+                                    true, true, true }, // 2
+                    { true, true, true, true, true, true, true, true, true,
+                                    true, true, true }, // 3
+                    { true, true, true, true, true, true, true, true, true,
+                                    true, true, true }, // 4
+                    { false, true, false, false, true, false, false, true,
+                                    false, false, true, false }, // 5
+                    { true, true, true, true, true, true, true, true, true,
+                                    true, true, true }, // 6
+                    { true, false, false, true, false, false, true, false,
+                                    false, true, false, false }, // 7
+                    { true, true, true, true, true, true, true, true, true,
+                                    true, true, true }, // 8
+                    { true, true, true, true, true, true, true, true, true,
+                                    true, true, true }, // 9
+                    { false, true, false, false, true, false, false, true,
+                                    false, false, true, false }, // 10
+                    { true, false, false, true, false, false, true, false,
+                                    false, true, false, false }, // 11
+                    { true, true, true, true, true, true, true, true, true,
+                                    true, true, true }, // 12
+                    { true, true, true, true, true, true, true, true, true,
+                                    true, true, true }, // 13
+                    { false, true, false, false, true, false, false, true,
+                                    false, false, true, false }, // 14
+                    { true, false, false, true, false, false, true, false,
+                                    false, true, false, false }, // 15
+                    { false, true, false, false, true, false, false, true,
+                                    false, false, true, false }, // 16
+                    { true, false, false, true, false, false, true, false,
+                                    false, true, false, false }, // 17
+                    { false, true, false, false, true, false, false, true,
+                                    false, false, true, false } }; // 18
 
     /**
      * the number of courses that define a full load. No student can exceed this
@@ -65,8 +71,8 @@ public class OMCSProgramDetails {
      * which courses must be taken before which other courses.
      */
     private final Prerequisite[] prerequisites = { new Prerequisite(4, 16),
-            new Prerequisite(12, 1), new Prerequisite(9, 13),
-            new Prerequisite(3, 7) };
+                    new Prerequisite(12, 1), new Prerequisite(9, 13),
+                    new Prerequisite(3, 7) };
 
     /**
      * accessor for full load variable
@@ -120,7 +126,8 @@ public class OMCSProgramDetails {
         int semesterIndex = semester - 1;
 
         if ((courseIndex >= 0) && (courseIndex < numCourses)
-                && (semesterIndex >= 0) && (semesterIndex < numSemesters)) {
+                        && (semesterIndex >= 0)
+                        && (semesterIndex < numSemesters)) {
             return courseOfferings[courseIndex][semesterIndex];
         } else {
             return false;

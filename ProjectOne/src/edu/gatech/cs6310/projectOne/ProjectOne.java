@@ -3,6 +3,12 @@ package edu.gatech.cs6310.projectOne;
 import java.security.InvalidParameterException;
 import java.util.Arrays;
 
+/**
+ * Main class for Project One
+ * 
+ * @author David Loibl
+ * 
+ */
 public class ProjectOne {
 
     /**
@@ -17,8 +23,8 @@ public class ProjectOne {
 
         if (filenameIndex == 0 || filenameIndex >= args.length) {
             throw new InvalidParameterException("Usage: java "
-                    + ProjectOne.class.getName()
-                    + " -i <student demands filename>");
+                            + ProjectOne.class.getName()
+                            + " -i <student demands filename>");
         }
 
         String inputFilename = args[filenameIndex];

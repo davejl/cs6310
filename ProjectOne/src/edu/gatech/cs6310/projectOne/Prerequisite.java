@@ -1,5 +1,11 @@
 package edu.gatech.cs6310.projectOne;
 
+/**
+ * Used to define prequisite classes
+ * 
+ * @author David Loibl
+ * 
+ */
 public class Prerequisite {
 
     /**
