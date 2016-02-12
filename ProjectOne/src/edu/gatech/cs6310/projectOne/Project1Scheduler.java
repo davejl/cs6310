@@ -47,7 +47,7 @@ public class Project1Scheduler implements Scheduler {
     public void calculateSchedule(String dataFolder) {
         GRBEnv env;
         try {
-            env = new GRBEnv("mip1.log");
+            env = new GRBEnv("grb.log");
             env.set(GRB.IntParam.LogToConsole, 0);
 
             GRBModel model = new GRBModel(env);
