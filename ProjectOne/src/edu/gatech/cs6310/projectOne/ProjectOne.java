@@ -31,7 +31,7 @@ public class ProjectOne {
 
         Project1Scheduler scheduler = new Project1Scheduler();
         scheduler.calculateSchedule(inputFilename);
-        System.out.printf("X=%d", Math.round(scheduler.getObjectiveValue()));
+        System.out.printf("X=%.2f", scheduler.getObjectiveValue());
 
     }
 
